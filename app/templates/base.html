@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Restaurant Finder{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        /* Removed @apply directives - use Tailwind classes directly in HTML */
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-indigo-600">
+                        <i class="fas fa-utensils mr-2"></i>Restaurant Finder
+                    </a>
+                </div>
+                <div class="flex items-center space-x-6">
+                    {% if user %}
+                        <a href="/app" class="text-gray-700 hover:text-indigo-600">Find Restaurants</a>
+                        <a href="/profile" class="text-gray-700 hover:text-indigo-600">My Profile</a>
+                        <a href="/logout" class="text-indigo-600 hover:text-indigo-800">Logout</a>
+                    {% else %}
+                        <a href="/login" class="text-gray-700 hover:text-indigo-600">Login</a>
+                        <a href="/signup" class="text-indigo-600 hover:text-indigo-800">Sign Up</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm">
+                &copy; 2023 Restaurant Finder. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

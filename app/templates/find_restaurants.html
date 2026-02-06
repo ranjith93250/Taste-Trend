@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Find Restaurants - Restaurant Finder{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function loadCities() {
+        try {
+            const response = await fetch('/api/cities');
+            const cities = await response.json();
+            const citySelect = document.getElementById('city');
+            
+            // Clear existing options
+            citySelect.innerHTML = '<option value="">Select a city</option>';
+            
+            // Add cities to the dropdown
+            cities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                citySelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading cities:', error);
+        }
+    }
+
+    async function loadSublocations() {
+        const city = document.getElementById('city').value;
+        if (!city) return;
+        
+        try {
+            const response = await fetch(`/api/sublocations?city=${encodeURIComponent(city)}`);
+            const sublocations = await response.json();
+            const sublocationSelect = document.getElementById('sublocation');
+            
+            // Clear existing options
+            sublocationSelect.innerHTML = '<option value="">Select a sub-location (optional)</option>';
+            
+            // Add sublocations to the dropdown
+            sublocations.forEach(loc => {
+                const option = document.createElement('option');
+                option.value = loc;
+                option.textContent = loc;
+                sublocationSelect.appendChild(option);
+            });
+            
+            // Show the sublocation field
+            document.getElementById('sublocation-container').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error loading sublocations:', error);
+        }
+    }
+
+    // Load cities when the page loads
+    document.addEventListener('DOMContentLoaded', loadCities);
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+        <div class="px-4 py-5 sm:px-6 bg-indigo-50">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Find Restaurants</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">Search for restaurants by dish and location</p>
+        </div>
+        
+        <div class="px-4 py-5 sm:p-6">
+            <form action="/search" method="post" class="space-y-6">
+                <div>
+                    <label for="dish" class="block text-sm font-medium text-gray-700">What would you like to eat?</label>
+                    <div class="mt-1">
+                        <input type="text" id="dish" name="dish" required
+                               class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border">
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                    <div class="mt-1">
+                        <select id="city" name="city" onchange="loadSublocations()" required
+                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border">
+                            <option value="">Loading cities...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="sublocation-container" class="hidden">
+                    <label for="sublocation" class="block text-sm font-medium text-gray-700">Area / Locality (optional)</label>
+                    <div class="mt-1">
+                        <select id="sublocation" name="sublocation"
+                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border">
+                            <option value="">Select a sub-location (optional)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <i class="fas fa-search mr-2"></i> Find Restaurants
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Results will be displayed here -->
+    <div id="results" class="space-y-4">
+        <!-- Results will be dynamically inserted here -->
+    </div>
+</div>
+{% endblock %}

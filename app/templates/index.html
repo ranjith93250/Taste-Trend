@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .restaurant-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .restaurant-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .loading {
+            display: none;
+        }
+        .loading.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-2">🍽️ Restaurant Finder</h1>
+            <p class="text-gray-600">Discover the best restaurants for your favorite dishes</p>
+        </header>
+
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6 mb-12">
+            <form id="searchForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="relative">
+                        <label for="city" class="block text-sm font-medium text-gray-700 mb-1">Select City</label>
+                        <div class="relative">
+                            <select id="city" name="city" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white">
+                                <option value="" disabled selected>Select a city</option>
+                                <!-- Cities will be populated by JavaScript -->
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="relative">
+                        <label for="sublocation" class="block text-sm font-medium text-gray-700 mb-1">Area (Optional)</label>
+                        <div class="relative">
+                            <select id="sublocation" name="sublocation"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white">
+                                <option value="" selected>All Areas</option>
+                                <!-- Sub-locations will be populated by JavaScript -->
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <label for="dish" class="block text-sm font-medium text-gray-700 mb-1">Select Dish/Cuisine</label>
+                    <div class="relative">
+                        <select id="dish" name="dish" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white">
+                            <option value="" disabled selected>Select a dish or cuisine</option>
+                            <!-- Dishes will be populated by JavaScript -->
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="text" id="customDish" 
+                           class="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                           placeholder="Or type your own dish...">
+                    <button type="button" id="useCustomDish" 
+                            class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-r-md text-gray-700">
+                        Use
+                    </button>
+                </div>
+                
+                <button type="submit" 
+                        class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-search mr-2"></i> Find Restaurants
+                </button>
+            </form>
+        </div>
+
+        <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Results will be displayed here -->
+        </div>
+
+        <div id="noResults" class="text-center py-12 hidden">
+            <i class="fas fa-utensils text-5xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-medium text-gray-700">No restaurants found</h3>
+            <p class="text-gray-500">Try a different search term or location</p>
+        </div>
+
+        <div id="loading" class="loading text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+            <p class="mt-4 text-gray-600">Finding the best restaurants for you...</p>
+        </div>
+    </div>
+
+    <footer class="bg-white py-6 mt-12 border-t">
+        <div class="container mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>© 2023 Restaurant Finder. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables
+        let currentCity = '';
+        
+        // Load cities when the page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCities();
+            
+            // When city changes, load sub-locations and dishes for that city
+            document.getElementById('city').addEventListener('change', async (e) => {
+                const city = e.target.value;
+                if (city) {
+                    // Show loading state
+                    const sublocationSelect = document.getElementById('sublocation');
+                    sublocationSelect.disabled = true;
+                    sublocationSelect.innerHTML = '<option value="">Loading areas...</option>';
+                    
+                    try {
+                        // Load sub-locations for the selected city
+                        await loadSublocations(city);
+                        
+                        // After loading sub-locations, load dishes for the city
+                        await loadDishes(city);
+                        
+                        // Enable the sub-location dropdown
+                        sublocationSelect.disabled = false;
+                    } catch (error) {
+                        console.error('Error loading city data:', error);
+                        sublocationSelect.innerHTML = '<option value="">Error loading areas</option>';
+                    }
+                }
+            });
+            
+            // When sub-location changes, update dishes
+            document.getElementById('sublocation').addEventListener('change', async (e) => {
+                const city = document.getElementById('city').value;
+                const sublocation = e.target.value;
+                
+                if (city && sublocation && sublocation !== 'All Areas') {
+                    // Show loading state
+                    const dishSelect = document.getElementById('dish');
+                    dishSelect.disabled = true;
+                    dishSelect.innerHTML = '<option value="">Loading dishes...</option>';
+                    
+                    try {
+                        await loadDishes(city, sublocation);
+                    } catch (error) {
+                        console.error('Error loading dishes:', error);
+                        dishSelect.innerHTML = '<option value="">Error loading dishes</option>';
+                    } finally {
+                        dishSelect.disabled = false;
+                    }
+                } else if (city) {
+                    // If 'All Areas' is selected, load dishes for the city
+                    await loadDishes(city);
+                }
+            });
+
+            // Handle custom dish input
+            document.getElementById('useCustomDish').addEventListener('click', () => {
+                const customDish = document.getElementById('customDish').value.trim();
+                if (customDish) {
+                    document.getElementById('dish').value = customDish;
+                }
+            });
+        });
+
+        async function loadCities() {
+            try {
+                const response = await fetch('/api/cities');
+                const data = await response.json();
+                const citySelect = document.getElementById('city');
+                
+                if (data.cities && data.cities.length > 0) {
+                    // Clear existing options except the first one
+                    while (citySelect.options.length > 1) {
+                        citySelect.remove(1);
+                    }
+                    
+                    // Add cities to dropdown
+                    data.cities.forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city;
+                        option.textContent = city;
+                        citySelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading cities:', error);
+            }
+        }
+
+        // Function to load sub-locations for the selected city
+        async function loadSublocations(city) {
+            try {
+                const response = await fetch(`/api/sublocations?city=${encodeURIComponent(city)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                const sublocationSelect = document.getElementById('sublocation');
+                sublocationSelect.innerHTML = ''; // Clear existing options
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'All Areas';
+                defaultOption.selected = true;
+                sublocationSelect.appendChild(defaultOption);
+                
+                if (data.sublocations && data.sublocations.length > 0) {
+                    // Add each sub-location as an option
+                    data.sublocations.forEach(sublocation => {
+                        if (sublocation && sublocation.trim() !== '') {
+                            const option = document.createElement('option');
+                            option.value = sublocation;
+                            option.textContent = sublocation;
+                            sublocationSelect.appendChild(option);
+                        }
+                    });
+                } else {
+                    // If no sub-locations found, add a message
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No specific areas found';
+                    sublocationSelect.appendChild(option);
+                }
+                
+                // Enable the dropdown
+                sublocationSelect.disabled = false;
+                return true;
+                
+            } catch (error) {
+                console.error('Error loading sub-locations:', error);
+                const sublocationSelect = document.getElementById('sublocation');
+                sublocationSelect.innerHTML = '<option value="">Error loading areas</option>';
+                sublocationSelect.disabled = false;
+                return false;
+            }
+        }
+        
+        // Function to load dishes for the selected city and sub-location
+        async function loadDishes(city, sublocation = '') {
+            try {
+                // Show loading state
+                const dishSelect = document.getElementById('dish');
+                dishSelect.disabled = true;
+                dishSelect.innerHTML = '<option value="">Loading dishes...</option>';
+                
+                let url = `/api/dishes?city=${encodeURIComponent(city)}`;
+                if (sublocation && sublocation !== 'All Areas') {
+                    url += `&sublocation=${encodeURIComponent(sublocation)}`;
+                }
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Clear existing options
+                dishSelect.innerHTML = '';
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select a dish or enter custom';
+                defaultOption.selected = true;
+                dishSelect.appendChild(defaultOption);
+                
+                if (data.dishes && data.dishes.length > 0) {
+                    // Sort dishes alphabetically (case-insensitive)
+                    const uniqueDishes = [...new Set(data.dishes.map(d => d.trim()))];
+                    uniqueDishes.sort((a, b) => a.localeCompare(b, 'en', {sensitivity: 'base'}));
+                    
+                    // Add each dish as an option
+                    uniqueDishes.forEach(dish => {
+                        if (dish && dish.trim() !== '') {
+                            const option = document.createElement('option');
+                            option.value = dish;
+                            option.textContent = dish;
+                            dishSelect.appendChild(option);
+                        }
+                    });
+                    
+                    // Show success message if in debug mode
+                    console.log(`Loaded ${uniqueDishes.length} dishes for ${sublocation || city}`);
+                } else {
+                    // If no dishes found, show a message
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No dishes found - enter a custom dish';
+                    dishSelect.appendChild(option);
+                }
+                
+                // Enable the dropdown
+                dishSelect.disabled = false;
+                return true;
+                
+            } catch (error) {
+                console.error('Error loading dishes:', error);
+                const dishSelect = document.getElementById('dish');
+                dishSelect.innerHTML = '<option value="">Error loading dishes - enter a custom dish</option>';
+                dishSelect.disabled = false;
+                return false;
+            }
+        }    
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const dish = document.getElementById('dish').value.trim();
+            const city = document.getElementById('city').value.trim();
+            const sublocation = document.getElementById('sublocation').value.trim();
+            const location = sublocation ? `${city}, ${sublocation}` : city;
+            
+            const resultsDiv = document.getElementById('results');
+            const noResultsDiv = document.getElementById('noResults');
+            const loadingDiv = document.getElementById('loading');
+            
+            // Show loading, hide other states
+            loadingDiv.classList.add('active');
+            resultsDiv.innerHTML = '';
+            noResultsDiv.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'dish': dish,
+                        'location': location
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.results && data.results.length > 0) {
+                    // Display results with complete details
+                    resultsDiv.innerHTML = data.results.map(restaurant => {
+                        // Process URL
+                        let restaurantUrl = '#';
+                        if (restaurant.url && restaurant.url !== 'nan' && restaurant.url !== 'NaN') {
+                            restaurantUrl = restaurant.url;
+                            if (!restaurantUrl.startsWith('http')) {
+                                restaurantUrl = restaurantUrl.startsWith('/') 
+                                    ? `https://www.zomato.com${restaurantUrl}`
+                                    : `https://www.zomato.com/${restaurantUrl}`;
+                            }
+                        }
+                        
+                        const hasValidUrl = restaurantUrl && restaurantUrl !== '#' && !restaurantUrl.includes('nan');
+                        
+                        // Format highlights
+                        const formatHighlights = (highlights) => {
+                            if (!highlights) return '';
+                            if (Array.isArray(highlights)) {
+                                return highlights.map(h => `
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-1 mb-1">
+                                        <i class="fas fa-check-circle mr-1"></i> ${h}
+                                    </span>
+                                `).join('');
+                            }
+                            return '';
+                        };
+                        
+                        // Format timings
+                        const formatTimings = (timings) => {
+                            if (!timings) return 'Timings not available';
+                            if (Array.isArray(timings)) {
+                                return timings.join(', ');
+                            }
+                            return timings;
+                        };
+                        
+                        return `
+                            <div class="restaurant-card bg-white rounded-lg overflow-hidden shadow-md h-full flex flex-col border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+                                <div class="relative">
+                                    ${restaurant.image_url && restaurant.image_url !== 'nan' ? 
+                                        `<img src="${restaurant.image_url}" alt="${restaurant.restaurant_name}" class="w-full h-48 object-cover">` : 
+                                        `<div class="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                                            <i class="fas fa-utensils text-5xl text-gray-400"></i>
+                                        </div>`
+                                    }
+                                    ${restaurant.rating ? 
+                                        `<div class="absolute top-2 right-2 bg-white bg-opacity-90 px-2 py-1 rounded-full text-sm font-semibold text-indigo-700 flex items-center shadow-sm">
+                                            <span>${restaurant.rating.toFixed(1)}</span>
+                                            <span class="text-yellow-400 ml-1">★</span>
+                                            <span class="ml-1 text-xs text-gray-500">${restaurant.rating_text || ''}</span>
+                                        </div>` : ''
+                                    }
+                                </div>
+                                <div class="p-4 flex-1 flex flex-col">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h3 class="text-lg font-semibold text-gray-800">${restaurant.restaurant_name}</h3>
+                                        ${restaurant.average_cost_for_two ? 
+                                            `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded whitespace-nowrap">
+                                                ₹${restaurant.average_cost_for_two.toLocaleString()} for two
+                                            </span>` : ''
+                                        }
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <p class="text-sm text-gray-600">
+                                            <i class="fas fa-map-marker-alt text-red-500 mr-1"></i>
+                                            ${restaurant.locality || restaurant.address || 'Location not available'}
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            <i class="fas fa-utensils text-amber-500 mr-1"></i>
+                                            ${restaurant.cuisines || 'Cuisines not specified'}
+                                        </p>
+                                    </div>
+                                    
+                                    ${restaurant.highlights && restaurant.highlights.length > 0 ? `
+                                        <div class="mb-3">
+                                            <div class="text-xs text-gray-500 mb-1">Highlights:</div>
+                                            <div class="flex flex-wrap">
+                                                ${formatHighlights(restaurant.highlights)}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div class="mt-auto">
+                                        <div class="flex items-center text-xs text-gray-500 mb-2">
+                                            <i class="far fa-clock text-purple-500 mr-1"></i>
+                                            ${formatTimings(restaurant.timings)}
+                                        </div>
+                                        
+                                        <div class="flex justify-between items-center text-xs text-gray-500 mb-3">
+                                            <span class="flex items-center">
+                                                <i class="fas fa-users text-gray-400 mr-1"></i>
+                                                ${restaurant.votes ? restaurant.votes.toLocaleString() + ' votes' : 'No votes yet'}
+                                            </span>
+                                            ${restaurant.delivery === 'Yes' ? `
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                    <i class="fas fa-motorcycle mr-1"></i> Delivery
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                        
+                                        ${hasValidUrl ? `
+                                            <a href="${restaurantUrl}" target="_blank" 
+                                               class="block text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md text-sm font-medium transition duration-200">
+                                                <i class="fas fa-external-link-alt mr-2"></i>View on Zomato
+                                            </a>
+                                        ` : `
+                                            <div class="text-center bg-gray-100 text-gray-500 py-2 rounded-md text-sm">
+                                                <i class="fas fa-ban mr-2"></i>Not available on Zomato
+                                            </div>
+                                        `}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    noResultsDiv.classList.add('hidden');
+                } else {
+                    // No results
+                    resultsDiv.innerHTML = '';
+                    noResultsDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="col-span-3 bg-red-50 border-l-4 border-red-500 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-red-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700">An error occurred while searching. Please try again later.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } finally {
+                loadingDiv.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
